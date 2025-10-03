@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syncify Options</title>
+    <style>
+        body {
+            width: 600px;
+            margin: 0 auto;
+            padding: 24px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #ffffff;
+            color: #1f2937;
+            line-height: 1.6;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .logo {
+            width: 48px;
+            height: 48px;
+            background: #3b82f6;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 24px;
+            margin: 0 auto 16px;
+        }
+        
+        .title {
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0 0 8px;
+            color: #111827;
+        }
+        
+        .subtitle {
+            font-size: 16px;
+            color: #6b7280;
+            margin: 0;
+        }
+        
+        .section {
+            margin-bottom: 32px;
+        }
+        
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #111827;
+        }
+        
+        .setting {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px;
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .setting-info {
+            flex: 1;
+        }
+        
+        .setting-title {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 4px;
+            color: #111827;
+        }
+        
+        .setting-description {
+            font-size: 14px;
+            color: #6b7280;
+        }
+        
+        .switch {
+            position: relative;
+            width: 52px;
+            height: 28px;
+            background: #d1d5db;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .switch.active {
+            background: #3b82f6;
+        }
+        
+        .switch-thumb {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .switch.active .switch-thumb {
+            transform: translateX(24px);
+        }
+        
+        .input-group {
+            margin-bottom: 16px;
+        }
+        
+        .label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+        
+        .input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            transition: border-color 0.2s;
+        }
+        
+        .input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-right: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .button.primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .button.primary:hover {
+            background: #2563eb;
+        }
+        
+        .button.secondary {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+        }
+        
+        .button.secondary:hover {
+            background: #e2e8f0;
+        }
+        
+        .button.danger {
+            background: #ef4444;
+            color: white;
+        }
+        
+        .button.danger:hover {
+            background: #dc2626;
+        }
+        
+        .info-card {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .info-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #0369a1;
+        }
+        
+        .info-text {
+            font-size: 14px;
+            color: #0c4a6e;
+        }
+        
+        .warning-card {
+            background: #fefce8;
+            border: 1px solid #fde047;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .warning-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #a16207;
+        }
+        
+        .warning-text {
+            font-size: 14px;
+            color: #713f12;
+        }
+        
+        .site-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+        
+        .site-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        
+        .site-item:last-child {
+            border-bottom: none;
+        }
+        
+        .site-info {
+            flex: 1;
+        }
+        
+        .site-domain {
+            font-size: 14px;
+            font-weight: 500;
+            color: #111827;
+        }
+        
+        .site-status {
+            font-size: 12px;
+            color: #6b7280;
+        }
+        
+        .site-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .small-button {
+            padding: 4px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+        .success {
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">S</div>
+        <h1 class="title">Syncify Options</h1>
+        <p class="subtitle">Configure your AI context synchronization</p>
+    </div>
+
+    <div id="auth-section">
+        <div class="section">
+            <h2 class="section-title">Authentication</h2>
+            <div class="info-card">
+                <div class="info-title">Connect Your Account</div>
+                <div class="info-text">
+                    Sign in to your Syncify account to start syncing AI context across all your tools.
+                </div>
+            </div>
+            <button class="button primary" id="login-btn">Connect Account</button>
+        </div>
+    </div>
+
+    <div id="main-section" class="hidden">
+        <div class="section">
+            <h2 class="section-title">General Settings</h2>
+            
+            <div class="setting">
+                <div class="setting-info">
+                    <div class="setting-title">Enable Syncify</div>
+                    <div class="setting-description">Master toggle for all Syncify functionality</div>
+                </div>
+                <div class="switch active" id="enable-switch">
+                    <div class="switch-thumb"></div>
+                </div>
+            </div>
+
+            <div class="setting">
+                <div class="setting-info">
+                    <div class="setting-title">Auto Capture</div>
+                    <div class="setting-description">Automatically capture conversations from AI sites</div>
+                </div>
+                <div class="switch active" id="capture-switch">
+                    <div class="switch-thumb"></div>
+                </div>
+            </div>
+
+            <div class="setting">
+                <div class="setting-info">
+                    <div class="setting-title">Auto Inject</div>
+                    <div class="setting-description">Automatically inject your context into AI conversations</div>
+                </div>
+                <div class="switch active" id="inject-switch">
+                    <div class="switch-thumb"></div>
+                </div>
+            </div>
+
+            <div class="setting">
+                <div class="setting-info">
+                    <div class="setting-title">Show Notifications</div>
+                    <div class="setting-description">Display notifications when context is synced</div>
+                </div>
+                <div class="switch active" id="notifications-switch">
+                    <div class="switch-thumb"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Site Management</h2>
+            
+            <div class="input-group">
+                <label class="label" for="new-site">Add New Site</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="text" id="new-site" class="input" placeholder="example.com">
+                    <button class="button primary" id="add-site-btn">Add</button>
+                </div>
+            </div>
+
+            <div class="site-list" id="site-list">
+                <!-- Sites will be populated here -->
+            </div>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Data Management</h2>
+            
+            <div class="warning-card">
+                <div class="warning-title">Export Your Data</div>
+                <div class="warning-text">
+                    Download all your memories, conversations, and settings as a JSON file for backup.
+                </div>
+            </div>
+            <button class="button secondary" id="export-btn">Export Data</button>
+
+            <div class="warning-card" style="background: #fef2f2; border-color: #fecaca;">
+                <div class="warning-title" style="color: #991b1b;">Delete All Data</div>
+                <div class="warning-text" style="color: #713f12;">
+                    Permanently delete all your Syncify data. This action cannot be undone.
+                </div>
+            </div>
+            <button class="button danger" id="delete-btn">Delete All Data</button>
+        </div>
+
+        <div class="section">
+            <h2 class="section-title">Account</h2>
+            <button class="button secondary" id="logout-btn">Disconnect Account</button>
+        </div>
+    </div>
+
+    <div id="message-area"></div>
+
+    <script src="options.js"></script>
+</body>
+</html>
+

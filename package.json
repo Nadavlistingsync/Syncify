@@ -1,0 +1,46 @@
+{
+  "name": "syncify",
+  "version": "1.0.0",
+  "description": "AI Context Synchronization Platform",
+  "private": true,
+  "workspaces": [
+    "web"
+  ],
+  "scripts": {
+    "dev": "cd web && npm run dev",
+    "build": "cd web && npm run build",
+    "start": "cd web && npm run start",
+    "lint": "cd web && npm run lint",
+    "type-check": "cd web && npm run type-check",
+    "docker:dev": "docker-compose up -d",
+    "docker:stop": "docker-compose down",
+    "docker:clean": "docker-compose down -v",
+    "test": "cd web && npm test",
+    "prepare": "cd web && npm install"
+  },
+  "keywords": [
+    "ai",
+    "context",
+    "synchronization",
+    "llm",
+    "chatgpt",
+    "claude",
+    "gemini",
+    "chrome-extension"
+  ],
+  "author": "Syncify Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/syncify.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/syncify/issues"
+  },
+  "homepage": "https://syncify.ai",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  }
+}
+

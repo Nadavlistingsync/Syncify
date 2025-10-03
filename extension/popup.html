@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syncify</title>
+    <style>
+        body {
+            width: 320px;
+            min-height: 400px;
+            margin: 0;
+            padding: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #ffffff;
+            color: #1f2937;
+        }
+        
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .logo {
+            width: 24px;
+            height: 24px;
+            background: #3b82f6;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        .title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        
+        .status.connected {
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        
+        .status.disconnected {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .status.connected .status-dot {
+            background: #10b981;
+        }
+        
+        .status.disconnected .status-dot {
+            background: #ef4444;
+        }
+        
+        .section {
+            margin-bottom: 16px;
+        }
+        
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #374151;
+        }
+        
+        .toggle {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        
+        .toggle:last-child {
+            border-bottom: none;
+        }
+        
+        .toggle-label {
+            font-size: 14px;
+            color: #374151;
+        }
+        
+        .switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            background: #d1d5db;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .switch.active {
+            background: #3b82f6;
+        }
+        
+        .switch-thumb {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .switch.active .switch-thumb {
+            transform: translateX(20px);
+        }
+        
+        .info-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .info-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: #1e293b;
+        }
+        
+        .info-text {
+            font-size: 12px;
+            color: #64748b;
+            line-height: 1.4;
+        }
+        
+        .button {
+            width: 100%;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-bottom: 8px;
+        }
+        
+        .button.primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .button.primary:hover {
+            background: #2563eb;
+        }
+        
+        .button.secondary {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #cbd5e1;
+        }
+        
+        .button.secondary:hover {
+            background: #e2e8f0;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .stat {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 8px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+        .error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">S</div>
+        <h1 class="title">Syncify</h1>
+    </div>
+
+    <div id="auth-section">
+        <div class="status disconnected" id="auth-status">
+            <div class="status-dot"></div>
+            <span>Not connected</span>
+        </div>
+        
+        <button class="button primary" id="login-btn">
+            Connect Account
+        </button>
+        
+        <div class="info-card">
+            <div class="info-title">Get Started</div>
+            <div class="info-text">
+                Connect your Syncify account to start syncing AI context across all your favorite AI tools.
+            </div>
+        </div>
+    </div>
+
+    <div id="main-section" class="hidden">
+        <div class="status connected" id="main-status">
+            <div class="status-dot"></div>
+            <span>Connected as <span id="user-email"></span></span>
+        </div>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value" id="memories-count">-</div>
+                <div class="stat-label">Memories</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="sites-count">-</div>
+                <div class="stat-label">Active Sites</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Settings</div>
+            <div class="toggle">
+                <span class="toggle-label">Enable Sync</span>
+                <div class="switch active" id="enable-switch">
+                    <div class="switch-thumb"></div>
+                </div>
+            </div>
+            <div class="toggle">
+                <span class="toggle-label">Auto Capture</span>
+                <div class="switch active" id="capture-switch">
+                    <div class="switch-thumb"></div>
+                </div>
+            </div>
+            <div class="toggle">
+                <span class="toggle-label">Auto Inject</span>
+                <div class="switch active" id="inject-switch">
+                    <div class="switch-thumb"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Current Site</div>
+            <div class="info-card">
+                <div class="info-title" id="current-site">Unknown</div>
+                <div class="info-text" id="site-status">Checking...</div>
+            </div>
+        </div>
+
+        <button class="button secondary" id="options-btn">
+            Open Settings
+        </button>
+        
+        <button class="button secondary" id="logout-btn">
+            Disconnect
+        </button>
+    </div>
+
+    <div id="error-message" class="error hidden"></div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
+
