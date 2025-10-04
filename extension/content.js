@@ -69,16 +69,25 @@ class UniversalAIContextManager {
 
   detectAISite() {
     const aiSitePatterns = [
-      // OpenAI
+      // OpenAI/ChatGPT
       /chat\.openai\.com/i,
       /chatgpt\.com/i,
       
-      // Anthropic
+      // Anthropic/Claude
       /claude\.ai/i,
+      /claude\.com/i,
       
-      // Google
+      // Google/Gemini
       /gemini\.google\.com/i,
+      /gemini\.com/i,
       /bard\.google\.com/i,
+      
+      // X/Twitter Grok
+      /grok\.com/i,
+      /x\.com/i,
+      
+      // DeepSeek
+      /deepseek\.com/i,
       
       // Others
       /poe\.com/i,
@@ -97,10 +106,14 @@ class UniversalAIContextManager {
     
     if (domain.includes('openai.com') || domain.includes('chatgpt.com')) {
       return new OpenAISiteAdapter()
-    } else if (domain.includes('claude.ai')) {
+    } else if (domain.includes('claude.ai') || domain.includes('claude.com')) {
       return new ClaudeSiteAdapter()
-    } else if (domain.includes('google.com')) {
+    } else if (domain.includes('google.com') || domain.includes('gemini.com')) {
       return new GoogleSiteAdapter()
+    } else if (domain.includes('grok.com') || domain.includes('x.com')) {
+      return new GrokSiteAdapter()
+    } else if (domain.includes('deepseek.com')) {
+      return new DeepSeekSiteAdapter()
     } else {
       // Generic adapter for unknown sites
       return new GenericSiteAdapter()
@@ -601,7 +614,7 @@ class GoogleSiteAdapter {
   }
 
   isChatRequest(url, options) {
-    return url.includes('/generate') || url.includes('/chat')
+    return url.includes('/generate') || url.includes('/chat') || url.includes('/gemini')
   }
 
   async extractMessagesFromRequest(url, options, response) {
@@ -631,6 +644,142 @@ class GoogleSiteAdapter {
   extractMessagesFromDOM(mutations) {
     // Google DOM parsing
     return null
+  }
+}
+
+class GrokSiteAdapter {
+  getProviderName() {
+    return 'grok'
+  }
+
+  isChatRequest(url, options) {
+    return url.includes('/api/grok') || url.includes('/chat') || url.includes('/generate')
+  }
+
+  async extractMessagesFromRequest(url, options, response) {
+    try {
+      if (options && options.body) {
+        const body = typeof options.body === 'string' ? JSON.parse(options.body) : options.body
+        if (body.messages) {
+          return body.messages.map(msg => ({
+            role: msg.role,
+            content: msg.content,
+            timestamp: new Date().toISOString()
+          }))
+        } else if (body.prompt) {
+          return [{
+            role: 'user',
+            content: body.prompt,
+            timestamp: new Date().toISOString()
+          }]
+        }
+      }
+      return null
+    } catch (error) {
+      console.error('Error extracting Grok messages:', error)
+      return null
+    }
+  }
+
+  extractMessagesFromWebSocket(data) {
+    // Grok WebSocket handling
+    return null
+  }
+
+  extractMessagesFromDOM(mutations) {
+    // Grok DOM parsing - look for chat messages in X/Twitter interface
+    const messages = []
+    
+    mutations.forEach(mutation => {
+      mutation.addedNodes.forEach(node => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          // Look for Grok chat messages
+          const grokMessages = node.querySelectorAll('[data-testid*="grok"], [data-testid*="chat"]')
+          grokMessages.forEach(msgEl => {
+            const text = msgEl.textContent?.trim()
+            if (text && text.length > 0) {
+              // Determine if it's user or assistant based on CSS classes or structure
+              const isUser = msgEl.closest('[data-testid*="user"]') || msgEl.classList.contains('user-message')
+              messages.push({
+                role: isUser ? 'user' : 'assistant',
+                content: text,
+                timestamp: new Date().toISOString()
+              })
+            }
+          })
+        }
+      })
+    })
+    
+    return messages.length > 0 ? messages : null
+  }
+}
+
+class DeepSeekSiteAdapter {
+  getProviderName() {
+    return 'deepseek'
+  }
+
+  isChatRequest(url, options) {
+    return url.includes('/api/v1/chat') || url.includes('/chat/completions') || url.includes('/generate')
+  }
+
+  async extractMessagesFromRequest(url, options, response) {
+    try {
+      if (options && options.body) {
+        const body = typeof options.body === 'string' ? JSON.parse(options.body) : options.body
+        if (body.messages) {
+          return body.messages.map(msg => ({
+            role: msg.role,
+            content: msg.content,
+            timestamp: new Date().toISOString()
+          }))
+        } else if (body.prompt) {
+          return [{
+            role: 'user',
+            content: body.prompt,
+            timestamp: new Date().toISOString()
+          }]
+        }
+      }
+      return null
+    } catch (error) {
+      console.error('Error extracting DeepSeek messages:', error)
+      return null
+    }
+  }
+
+  extractMessagesFromWebSocket(data) {
+    // DeepSeek WebSocket handling
+    return null
+  }
+
+  extractMessagesFromDOM(mutations) {
+    // DeepSeek DOM parsing
+    const messages = []
+    
+    mutations.forEach(mutation => {
+      mutation.addedNodes.forEach(node => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          // Look for DeepSeek chat messages
+          const chatMessages = node.querySelectorAll('.message, [class*="message"], [class*="chat"]')
+          chatMessages.forEach(msgEl => {
+            const text = msgEl.textContent?.trim()
+            if (text && text.length > 0) {
+              // Determine if it's user or assistant
+              const isUser = msgEl.classList.contains('user') || msgEl.closest('.user-message')
+              messages.push({
+                role: isUser ? 'user' : 'assistant',
+                content: text,
+                timestamp: new Date().toISOString()
+              })
+            }
+          })
+        }
+      })
+    })
+    
+    return messages.length > 0 ? messages : null
   }
 }
 

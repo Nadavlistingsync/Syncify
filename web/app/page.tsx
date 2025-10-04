@@ -11,9 +11,11 @@ export default function HomePage() {
         <h1 className="text-5xl font-bold text-foreground mb-6">
           Syncify
         </h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          Sync your AI context across all LLMs and websites. Never lose your conversation 
-          history or repeat yourself again.
+        <p className="text-2xl text-muted-foreground max-w-3xl mx-auto mb-8">
+          <strong>Never repeat yourself to AI again.</strong>
+        </p>
+        <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          Tell ChatGPT, Claude, and Gemini once. They'll remember everywhere.
         </p>
       </div>
 
@@ -21,25 +23,25 @@ export default function HomePage() {
       <div className="grid md:grid-cols-3 gap-8 mb-12">
         <div className="p-6 rounded-lg border bg-card">
           <Brain className="h-12 w-12 text-primary mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Universal LLM Support</h3>
+          <h3 className="text-lg font-semibold mb-2">Works Everywhere</h3>
           <p className="text-muted-foreground">
-            Works with ChatGPT, Claude, Gemini, and any other AI platform you use.
+            ChatGPT, Claude, Gemini - all your AI tools in one place.
           </p>
         </div>
 
         <div className="p-6 rounded-lg border bg-card">
           <Globe className="h-12 w-12 text-primary mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Website Integration</h3>
+          <h3 className="text-lg font-semibold mb-2">Auto-Sync</h3>
           <p className="text-muted-foreground">
-            Chrome extension automatically syncs context on any website with AI features.
+            Chrome extension remembers everything automatically.
           </p>
         </div>
 
         <div className="p-6 rounded-lg border bg-card">
           <Shield className="h-12 w-12 text-primary mx-auto mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Privacy First</h3>
+          <h3 className="text-lg font-semibold mb-2">Your Data, Your Control</h3>
           <p className="text-muted-foreground">
-            Your data is encrypted and you control what gets shared with each AI.
+            Encrypted and private. You decide what to share.
           </p>
         </div>
       </div>

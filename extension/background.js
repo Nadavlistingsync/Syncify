@@ -3,8 +3,8 @@
 import { createClient } from './lib/supabase.js'
 
 // Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL || 'https://your-project.supabase.co'
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'your-anon-key'
+const supabaseUrl = 'https://rxcrqouvjzxwhtvubdso.supabase.co'
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4Y3Jxb3V2anp4d2h0dnViZHNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1ODY3MDcsImV4cCI6MjA3NTE2MjcwN30.AZ-yzDVl3dBWMMQ2RGovLB6Q9tVUsLlWtSBmIzLFm24'
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
@@ -128,7 +128,7 @@ async function handleContextCapture(data, tab) {
       
       // Store the conversation in the database
       try {
-        const response = await fetch(`${process.env.API_BASE_URL || 'http://localhost:3000'}/api/conversations`, {
+        const response = await fetch(`http://localhost:3000/api/conversations`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${authToken}`,
@@ -175,7 +175,7 @@ async function handleGetContextProfile(data, tab) {
     }
     
     // Fetch context profile from API
-    const response = await fetch(`${process.env.API_BASE_URL || 'http://localhost:3000'}/api/context/profile?site=${encodeURIComponent(data.site)}&provider=${encodeURIComponent(data.provider)}`, {
+    const response = await fetch(`http://localhost:3000/api/context/profile?site=${encodeURIComponent(data.site)}&provider=${encodeURIComponent(data.provider)}`, {
       headers: {
         'Authorization': `Bearer ${authToken}`,
         'Content-Type': 'application/json'
@@ -255,7 +255,7 @@ async function handleLogEvent(data) {
 
 // Log event to API
 async function logEvent(eventData) {
-  const response = await fetch(`${process.env.API_BASE_URL || 'http://localhost:3000'}/api/events`, {
+    const response = await fetch(`http://localhost:3000/api/events`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${authToken}`,
@@ -371,9 +371,14 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 function isAISite(url) {
   const aiSites = [
     'chat.openai.com',
-    'claude.ai',
-    'gemini.google.com',
     'chatgpt.com',
+    'claude.ai',
+    'claude.com',
+    'gemini.google.com',
+    'gemini.com',
+    'grok.com',
+    'x.com',
+    'deepseek.com',
     'poe.com',
     'perplexity.ai',
     'you.com',

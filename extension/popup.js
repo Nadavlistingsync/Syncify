@@ -269,9 +269,14 @@ class PopupManager {
   isAISite(domain) {
     const aiSites = [
       'chat.openai.com',
-      'claude.ai',
-      'gemini.google.com',
       'chatgpt.com',
+      'claude.ai',
+      'claude.com',
+      'gemini.google.com',
+      'gemini.com',
+      'grok.com',
+      'x.com',
+      'deepseek.com',
       'poe.com',
       'perplexity.ai',
       'you.com',

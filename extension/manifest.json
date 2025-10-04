@@ -43,7 +43,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["inject.js"],
+      "resources": ["lib/supabase.js"],
       "matches": ["<all_urls>"]
     }
   ],
