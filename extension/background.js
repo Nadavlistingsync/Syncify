@@ -128,7 +128,7 @@ async function handleContextCapture(data, tab) {
       
       // Store the conversation in the database
       try {
-        const response = await fetch(`http://localhost:3000/api/conversations`, {
+        const response = await fetch(`http://localhost:3003/api/conversations`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${authToken}`,
@@ -175,7 +175,7 @@ async function handleGetContextProfile(data, tab) {
     }
     
     // Fetch context profile from API
-    const response = await fetch(`http://localhost:3000/api/context/profile?site=${encodeURIComponent(data.site)}&provider=${encodeURIComponent(data.provider)}`, {
+    const response = await fetch(`http://localhost:3003/api/context/profile?site=${encodeURIComponent(data.site)}&provider=${encodeURIComponent(data.provider)}`, {
       headers: {
         'Authorization': `Bearer ${authToken}`,
         'Content-Type': 'application/json'
@@ -255,7 +255,7 @@ async function handleLogEvent(data) {
 
 // Log event to API
 async function logEvent(eventData) {
-    const response = await fetch(`http://localhost:3000/api/events`, {
+    const response = await fetch(`http://localhost:3003/api/events`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${authToken}`,
@@ -274,7 +274,7 @@ async function logEvent(eventData) {
 // Get site policy
 async function getSitePolicy(site) {
   try {
-    const response = await fetch(`${process.env.API_BASE_URL || 'http://localhost:3000'}/api/site-policies?origin=${encodeURIComponent(site)}`, {
+    const response = await fetch(`http://localhost:3003/api/site-policies?origin=${encodeURIComponent(site)}`, {
       headers: {
         'Authorization': `Bearer ${authToken}`,
         'Content-Type': 'application/json'
@@ -297,7 +297,7 @@ async function getSitePolicy(site) {
 async function handleAuthLogin() {
   try {
     // Open auth page
-    const authUrl = `${process.env.APP_URL || 'http://localhost:3000'}/auth/login?extension=true`
+    const authUrl = `http://localhost:3003/auth/login?extension=true`
     const tab = await chrome.tabs.create({ url: authUrl })
     
     // Listen for auth completion

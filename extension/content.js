@@ -241,7 +241,21 @@ class UniversalAIContextManager {
       '.prompt-input',
       '[data-testid*="input"]',
       '[aria-label*="message"]',
-      '[aria-label*="prompt"]'
+      '[aria-label*="prompt"]',
+      // ChatGPT specific
+      '#prompt-textarea',
+      '[data-id*="root"] textarea',
+      // Claude specific
+      '.ProseMirror',
+      '[contenteditable="true"][role="textbox"]',
+      // Gemini specific
+      'textarea[aria-label*="Enter a prompt"]',
+      // Grok specific
+      '[data-testid*="tweetTextarea"]',
+      '[data-testid*="grok"] textarea',
+      // DeepSeek specific
+      '.chat-input textarea',
+      'textarea[placeholder*="message"]'
     ]
 
     messageSelectors.forEach(selector => {
@@ -287,18 +301,25 @@ class UniversalAIContextManager {
   isNewMessageInput(input, event) {
     // Check if input is empty or contains only whitespace
     const value = input.value || input.textContent || ''
-    if (value.trim().length > 0) return false
-
+    
+    // Allow injection even if there's some text (for mid-conversation context)
+    const isEmpty = value.trim().length === 0
+    const isShortText = value.trim().length < 50
+    
     // Check if this is a primary input area
     const isPrimaryInput = input.matches('textarea, [role="textbox"], [contenteditable="true"]')
     if (!isPrimaryInput) return false
 
-    // Check if input is visible and focused
+    // Check if input is visible
     const rect = input.getBoundingClientRect()
     const isVisible = rect.width > 0 && rect.height > 0
+    
+    // Check if input is focused or just became active
     const isFocused = document.activeElement === input
+    const isJustActivated = event.type === 'focus' || event.type === 'click'
 
-    return isVisible && isFocused
+    // Inject context for new conversations or when user starts typing a new message
+    return isVisible && (isFocused || isJustActivated) && (isEmpty || isShortText)
   }
 
   async injectContext(input) {
@@ -465,13 +486,71 @@ class UniversalAIContextManager {
     try {
       // Look for new messages in DOM
       const newMessages = this.siteAdapter.extractMessagesFromDOM(mutations)
-      if (!newMessages || newMessages.length === 0) return
+      if (!newMessages || newMessages.length === 0) {
+        // Also try generic message detection as fallback
+        this.detectGenericMessages(mutations)
+        return
+      }
 
       // Capture the context
       this.captureContext(newMessages)
       
     } catch (error) {
       console.error('Error handling DOM changes:', error)
+    }
+  }
+
+  detectGenericMessages(mutations) {
+    const messages = []
+    
+    mutations.forEach(mutation => {
+      mutation.addedNodes.forEach(node => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          // Look for common message patterns
+          const messageSelectors = [
+            '[data-message-author-role]',
+            '[role="listitem"]',
+            '.message',
+            '.chat-message',
+            '.conversation-turn',
+            '.assistant-message',
+            '.user-message',
+            // ChatGPT specific
+            '[data-message-id]',
+            // Claude specific
+            '[data-testid*="message"]',
+            // Gemini specific
+            '[jsname*="message"]',
+            // Grok specific
+            '[data-testid*="tweet"]'
+          ]
+
+          messageSelectors.forEach(selector => {
+            const messageElements = node.querySelectorAll(selector)
+            messageElements.forEach(msgEl => {
+              const text = msgEl.textContent?.trim()
+              if (text && text.length > 10) { // Only capture substantial messages
+                // Try to determine if it's user or assistant
+                const isUser = msgEl.classList.contains('user') || 
+                             msgEl.getAttribute('data-message-author-role') === 'user' ||
+                             msgEl.closest('.user-message') ||
+                             msgEl.querySelector('[data-testid*="user"]')
+                
+                messages.push({
+                  role: isUser ? 'user' : 'assistant',
+                  content: text,
+                  timestamp: new Date().toISOString()
+                })
+              }
+            })
+          })
+        }
+      })
+    })
+    
+    if (messages.length > 0) {
+      console.log('Detected generic messages:', messages.length)
+      this.captureContext(messages)
     }
   }
 
@@ -564,8 +643,34 @@ class OpenAISiteAdapter {
   }
 
   extractMessagesFromDOM(mutations) {
-    // OpenAI DOM parsing
-    return null
+    // OpenAI DOM parsing - look for ChatGPT message elements
+    const messages = []
+    
+    mutations.forEach(mutation => {
+      mutation.addedNodes.forEach(node => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          // Look for ChatGPT message containers
+          const messageElements = node.querySelectorAll('[data-message-id], [data-testid*="conversation-turn"], .group\\/conversation-turn')
+          messageElements.forEach(msgEl => {
+            const text = msgEl.textContent?.trim()
+            if (text && text.length > 0) {
+              // Determine if it's user or assistant based on ChatGPT's structure
+              const isUser = msgEl.querySelector('[data-message-author-role="user"]') || 
+                           msgEl.classList.contains('group\\/conversation-turn-user') ||
+                           msgEl.getAttribute('data-message-author-role') === 'user'
+              
+              messages.push({
+                role: isUser ? 'user' : 'assistant',
+                content: text,
+                timestamp: new Date().toISOString()
+              })
+            }
+          })
+        }
+      })
+    })
+    
+    return messages.length > 0 ? messages : null
   }
 }
 
@@ -603,8 +708,34 @@ class ClaudeSiteAdapter {
   }
 
   extractMessagesFromDOM(mutations) {
-    // Claude DOM parsing
-    return null
+    // Claude DOM parsing - look for Claude message elements
+    const messages = []
+    
+    mutations.forEach(mutation => {
+      mutation.addedNodes.forEach(node => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          // Look for Claude message containers
+          const messageElements = node.querySelectorAll('[data-testid*="message"], .message, .claude-message')
+          messageElements.forEach(msgEl => {
+            const text = msgEl.textContent?.trim()
+            if (text && text.length > 0) {
+              // Determine if it's user or assistant based on Claude's structure
+              const isUser = msgEl.classList.contains('user-message') || 
+                           msgEl.querySelector('[data-testid*="user"]') ||
+                           msgEl.closest('.user-message')
+              
+              messages.push({
+                role: isUser ? 'user' : 'assistant',
+                content: text,
+                timestamp: new Date().toISOString()
+              })
+            }
+          })
+        }
+      })
+    })
+    
+    return messages.length > 0 ? messages : null
   }
 }
 
