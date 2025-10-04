@@ -13,7 +13,8 @@
     "test:continuous": "node continuous-test.js",
     "test:report": "playwright show-report",
     "test:vercel": "node test-vercel.js",
-    "test:vercel:continuous": "node test-vercel.js --continuous"
+    "test:vercel:continuous": "node test-vercel.js --continuous",
+    "test:extension": "node test-extension.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",

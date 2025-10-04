@@ -106,7 +106,21 @@ class UniversalAIContextManager {
       /you\.com/i,
       /character\.ai/i,
       /huggingface\.co/i,
-      /replicate\.com/i
+      /replicate\.com/i,
+      
+      // Syncify testing sites
+      /localhost:3000/i,
+      /localhost:3001/i,
+      /localhost:3002/i,
+      /localhost:3003/i,
+      /localhost:3004/i,
+      /localhost:3005/i,
+      /localhost:3006/i,
+      /syncify\.vercel\.app/i,
+      /syncify.*\.vercel\.app/i,
+      /syncify.*\.netlify\.app/i,
+      /syncify\.io/i,
+      /syncify\.ai/i
     ]
     
     return aiSitePatterns.some(pattern => pattern.test(this.currentSite.domain))
@@ -125,6 +139,8 @@ class UniversalAIContextManager {
       return new GrokSiteAdapter()
     } else if (domain.includes('deepseek.com')) {
       return new DeepSeekSiteAdapter()
+    } else if (domain.includes('localhost') || domain.includes('vercel.app') || domain.includes('syncify')) {
+      return new SyncifySiteAdapter()
     } else {
       // Generic adapter for unknown sites
       return new GenericSiteAdapter()
@@ -928,6 +944,121 @@ class DeepSeekSiteAdapter {
               const isUser = msgEl.classList.contains('user') || msgEl.closest('.user-message')
               messages.push({
                 role: isUser ? 'user' : 'assistant',
+                content: text,
+                timestamp: new Date().toISOString()
+              })
+            }
+          })
+        }
+      })
+    })
+    
+    return messages.length > 0 ? messages : null
+  }
+}
+
+class SyncifySiteAdapter {
+  getProviderName() {
+    return 'syncify'
+  }
+
+  isChatRequest(url, options) {
+    // Syncify API patterns
+    const syncifyPatterns = [
+      '/api/conversations',
+      '/api/memories',
+      '/api/context',
+      '/api/profiles',
+      '/api/export',
+      '/api/telemetry'
+    ]
+    
+    return syncifyPatterns.some(pattern => url.includes(pattern))
+  }
+
+  async extractMessagesFromRequest(url, options, response) {
+    try {
+      if (options && options.body) {
+        const body = typeof options.body === 'string' ? JSON.parse(options.body) : options.body
+        
+        // Extract messages from Syncify API calls
+        if (url.includes('/api/conversations')) {
+          if (body.messages && Array.isArray(body.messages)) {
+            return body.messages.map(msg => ({
+              role: msg.role || 'user',
+              content: msg.content || msg.text,
+              timestamp: msg.timestamp || new Date().toISOString()
+            }))
+          }
+        }
+        
+        // Extract from context/profile requests
+        if (url.includes('/api/context') || url.includes('/api/profiles')) {
+          if (body.system_prompt || body.facts) {
+            return [{
+              role: 'system',
+              content: `System: ${body.system_prompt || ''} Facts: ${JSON.stringify(body.facts || [])}`,
+              timestamp: new Date().toISOString()
+            }]
+          }
+        }
+      }
+      
+      // Also try to extract from response
+      if (response) {
+        try {
+          const responseData = await response.clone().json()
+          if (responseData.messages && Array.isArray(responseData.messages)) {
+            return responseData.messages.map(msg => ({
+              role: msg.role || 'user',
+              content: msg.content || msg.text,
+              timestamp: msg.timestamp || new Date().toISOString()
+            }))
+          }
+        } catch (e) {
+          // Response might not be JSON
+        }
+      }
+      
+      return null
+    } catch (error) {
+      console.error('Error extracting Syncify messages:', error)
+      return null
+    }
+  }
+
+  extractMessagesFromWebSocket(data) {
+    // Syncify WebSocket handling
+    return null
+  }
+
+  extractMessagesFromDOM(mutations) {
+    // Look for Syncify-specific UI elements
+    const messages = []
+    
+    mutations.forEach(mutation => {
+      mutation.addedNodes.forEach(node => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          // Look for Syncify dashboard elements
+          const syncifyElements = node.querySelectorAll(
+            '[data-syncify], .syncify-message, .memory-card, .context-card, .profile-card'
+          )
+          
+          syncifyElements.forEach(el => {
+            const text = el.textContent?.trim()
+            if (text && text.length > 10) {
+              // Determine element type
+              const isMemory = el.classList.contains('memory-card') || el.querySelector('.memory-card')
+              const isContext = el.classList.contains('context-card') || el.querySelector('.context-card')
+              const isProfile = el.classList.contains('profile-card') || el.querySelector('.profile-card')
+              
+              let role = 'system'
+              if (isMemory) role = 'memory'
+              else if (isContext) role = 'context'
+              else if (isProfile) role = 'profile'
+              
+              messages.push({
+                role: role,
                 content: text,
                 timestamp: new Date().toISOString()
               })
