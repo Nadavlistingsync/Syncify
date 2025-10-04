@@ -9,7 +9,10 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { AuthGuard } from '@/components/auth-guard'
 import { SitePolicyCard } from '@/components/site-policy-card'
+import { ExportProgressDialog } from '@/components/export-progress-dialog'
+import { ChunkedExporter } from '@/lib/chunked-export'
 import { 
   Shield, 
   Download, 
@@ -20,39 +23,59 @@ import {
   FileText,
   AlertTriangle,
   Eye,
-  EyeOff,
   Plus,
-  ExternalLink
+  ExternalLink,
+  BookOpen,
+  HelpCircle,
+  MessageCircle,
+  Github,
+  Twitter
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase'
 import { getDomainFromUrl } from '@/lib/utils'
 import { SitePolicy, Profile } from '@/lib/supabase'
+import { useAuth } from '@/app/providers'
 
 export default function ResourcesPage() {
   const [newSiteDomain, setNewSiteDomain] = useState('')
   const [isAddingSite, setIsAddingSite] = useState(false)
+  const [exportProgress, setExportProgress] = useState({
+    totalChunks: 0,
+    completedChunks: 0,
+    currentDataType: '',
+    currentChunk: 0,
+    totalChunksForDataType: 0,
+    isDownloading: false
+  })
+  const [showExportProgress, setShowExportProgress] = useState(false)
+  const [chunkedExporter, setChunkedExporter] = useState<ChunkedExporter | null>(null)
   const supabase = createClient()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
 
   // Fetch profiles
   const { data: profiles = [] } = useQuery({
     queryKey: ['profiles'],
     queryFn: async () => {
+      if (!user) return []
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
+        .eq('user_id', user.id)
         .order('scope', { ascending: true })
         .order('name', { ascending: true })
       
       if (error) throw error
       return data as Profile[]
-    }
+    },
+    enabled: !!user
   })
 
   // Fetch site policies
   const { data: sitePolicies = [] } = useQuery({
     queryKey: ['site-policies'],
     queryFn: async () => {
+      if (!user) return []
       const { data, error } = await supabase
         .from('site_policies')
         .select(`
@@ -63,19 +86,25 @@ export default function ResourcesPage() {
             scope
           )
         `)
+        .eq('user_id', user.id)
         .order('origin')
       
       if (error) throw error
       return data
-    }
+    },
+    enabled: !!user
   })
 
   // Create profile mutation
   const createProfileMutation = useMutation({
     mutationFn: async (profile: { name: string; scope: string; token_budget: number }) => {
+      if (!user) throw new Error('User not authenticated')
       const { data, error } = await supabase
         .from('profiles')
-        .insert(profile)
+        .insert({
+          ...profile,
+          user_id: user.id
+        })
         .select()
         .single()
       
@@ -162,6 +191,7 @@ export default function ResourcesPage() {
   // Add site mutation
   const addSiteMutation = useMutation({
     mutationFn: async (origin: string) => {
+      if (!user) throw new Error('User not authenticated')
       const defaultProfile = profiles.find(p => p.scope === 'personal') || profiles[0]
       if (!defaultProfile) throw new Error('No default profile available')
       
@@ -169,6 +199,7 @@ export default function ResourcesPage() {
         .from('site_policies')
         .insert({
           origin,
+          user_id: user.id,
           profile_id: defaultProfile.id,
           enabled: true,
           capture: true,
@@ -194,12 +225,12 @@ export default function ResourcesPage() {
     }
   })
 
-  // Export data function
-  const exportData = async (format: 'json' | 'csv' = 'json', includeRedacted: boolean = false) => {
+  // Simple export function
+  const exportData = async (format: 'json' | 'csv' = 'json') => {
     try {
       const params = new URLSearchParams({
         format,
-        includeRedacted: includeRedacted.toString()
+        includeRedacted: 'true'
       })
       
       const response = await fetch(`/api/export?${params}`)
@@ -218,11 +249,18 @@ export default function ResourcesPage() {
       document.body.removeChild(a)
       URL.revokeObjectURL(url)
       
-      // Show success message
       alert(`Data exported successfully as ${format.toUpperCase()}!`)
     } catch (error) {
       console.error('Failed to export data:', error)
       alert('Failed to export data. Please try again.')
+    }
+  }
+
+  const cancelExport = () => {
+    if (chunkedExporter) {
+      chunkedExporter.cancel()
+      setShowExportProgress(false)
+      setChunkedExporter(null)
     }
   }
 
@@ -247,14 +285,18 @@ export default function ResourcesPage() {
     }
 
     try {
+      if (!user) throw new Error('User not authenticated')
+      
       // Delete in order to respect foreign key constraints
       await Promise.all([
-        supabase.from('events').delete(),
-        supabase.from('messages').delete(),
-        supabase.from('conversations').delete(),
-        supabase.from('memories').delete(),
-        supabase.from('site_policies').delete(),
-        supabase.from('profiles').delete().neq('scope', 'personal').neq('scope', 'work')
+        supabase.from('events').delete().eq('user_id', user.id),
+        supabase.from('messages').delete().in('conversation_id', 
+          await supabase.from('conversations').select('id').eq('user_id', user.id).then(res => res.data?.map(c => c.id) || [])
+        ),
+        supabase.from('conversations').delete().eq('user_id', user.id),
+        supabase.from('memories').delete().eq('user_id', user.id),
+        supabase.from('site_policies').delete().eq('user_id', user.id),
+        supabase.from('profiles').delete().eq('user_id', user.id).neq('scope', 'personal').neq('scope', 'work')
       ])
       
       queryClient.invalidateQueries()
@@ -266,17 +308,18 @@ export default function ResourcesPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="text-center space-y-4">
-        <div className="flex items-center justify-center gap-2">
-          <Shield className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold">Resources & Privacy</h1>
+    <AuthGuard>
+      <div className="max-w-6xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="text-center space-y-4">
+          <div className="flex items-center justify-center gap-2">
+            <BookOpen className="h-8 w-8 text-primary" />
+            <h1 className="text-3xl font-bold">Resources & Help</h1>
+          </div>
+          <p className="text-muted-foreground max-w-2xl mx-auto">
+            Manage your privacy, export your data, and find helpful resources
+          </p>
         </div>
-        <p className="text-muted-foreground max-w-2xl mx-auto">
-          Manage your privacy, export your data, and configure site permissions
-        </p>
-      </div>
 
       {/* Data Management */}
       <Card>
@@ -326,21 +369,25 @@ export default function ResourcesPage() {
               
               <div className="flex items-center gap-2">
                 <Button 
-                  onClick={() => exportData('json', false)} 
+                  onClick={() => exportData('json')} 
                   variant="outline"
                   className="flex-1"
                 >
                   <Download className="h-4 w-4 mr-2" />
-                  Export Safe JSON
+                  Export JSON
                 </Button>
                 <Button 
-                  onClick={() => exportData('csv', false)} 
+                  onClick={() => exportData('csv')} 
                   variant="outline"
                   className="flex-1"
                 >
                   <Download className="h-4 w-4 mr-2" />
                   Export CSV
                 </Button>
+              </div>
+              
+              <div className="text-xs text-muted-foreground text-center">
+                <p>💡 Large exports are automatically chunked to prevent timeouts</p>
               </div>
               
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
@@ -546,8 +593,12 @@ export default function ResourcesPage() {
                   key={policy.id}
                   policy={policy}
                   profiles={profiles}
-                  onUpdate={updateSitePolicyMutation.mutateAsync}
-                  onDelete={deleteSitePolicyMutation.mutateAsync}
+                  onUpdate={async (id: string, updates: Partial<SitePolicy>) => {
+                    await updateSitePolicyMutation.mutateAsync({ id, updates })
+                  }}
+                  onDelete={async (id: string) => {
+                    await deleteSitePolicyMutation.mutateAsync(id)
+                  }}
                 />
               ))}
             </div>
@@ -671,7 +722,9 @@ export default function ResourcesPage() {
           </div>
         </CardContent>
       </Card>
+
     </div>
+    </AuthGuard>
   )
 }
 

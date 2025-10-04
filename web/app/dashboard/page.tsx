@@ -21,15 +21,19 @@ import {
 import { createClient } from '@/lib/supabase'
 import { formatRelativeTime, getDomainFromUrl } from '@/lib/utils'
 import { TelemetryDashboard } from '@/components/telemetry-dashboard'
+import { AuthGuard } from '@/components/auth-guard'
+import { useAuth } from '@/app/providers'
 
 export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState('7d')
   const supabase = createClient()
+  const { user } = useAuth()
 
   // Fetch events for telemetry
   const { data: events = [], isLoading: eventsLoading } = useQuery({
     queryKey: ['events', timeRange],
     queryFn: async () => {
+      if (!user) return []
       const days = parseInt(timeRange.replace('d', ''))
       const fromDate = new Date()
       fromDate.setDate(fromDate.getDate() - days)
@@ -37,18 +41,21 @@ export default function DashboardPage() {
       const { data, error } = await supabase
         .from('events')
         .select('*')
+        .eq('user_id', user.id)
         .gte('ts', fromDate.toISOString())
         .order('ts', { ascending: false })
       
       if (error) throw error
       return data
-    }
+    },
+    enabled: !!user
   })
 
   // Fetch conversations
   const { data: conversations = [] } = useQuery({
     queryKey: ['conversations', timeRange],
     queryFn: async () => {
+      if (!user) return []
       const days = parseInt(timeRange.replace('d', ''))
       const fromDate = new Date()
       fromDate.setDate(fromDate.getDate() - days)
@@ -56,18 +63,21 @@ export default function DashboardPage() {
       const { data, error } = await supabase
         .from('conversations')
         .select('*')
+        .eq('user_id', user.id)
         .gte('created_at', fromDate.toISOString())
         .order('created_at', { ascending: false })
       
       if (error) throw error
       return data
-    }
+    },
+    enabled: !!user
   })
 
   // Fetch site policies
   const { data: sitePolicies = [] } = useQuery({
     queryKey: ['site-policies'],
     queryFn: async () => {
+      if (!user) return []
       const { data, error } = await supabase
         .from('site_policies')
         .select(`
@@ -78,12 +88,14 @@ export default function DashboardPage() {
             scope
           )
         `)
+        .eq('user_id', user.id)
         .eq('enabled', true)
         .order('origin')
       
       if (error) throw error
       return data
-    }
+    },
+    enabled: !!user
   })
 
   // Calculate stats
@@ -121,7 +133,8 @@ export default function DashboardPage() {
   const recentActivity = events.slice(0, 10)
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <AuthGuard>
+      <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -381,7 +394,8 @@ export default function DashboardPage() {
 
       {/* Telemetry Dashboard */}
       <TelemetryDashboard timeRange={timeRange} />
-    </div>
+      </div>
+    </AuthGuard>
   )
 }
 
