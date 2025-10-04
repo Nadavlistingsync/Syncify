@@ -1,0 +1,69 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - navigation [ref=e3]:
+    - generic [ref=e5]:
+      - link "Syncify" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - img [ref=e7] [cursor=pointer]
+        - text: Syncify
+      - generic [ref=e10]:
+        - link "Home" [ref=e11] [cursor=pointer]:
+          - /url: /
+          - button "Home" [ref=e12] [cursor=pointer]:
+            - img [ref=e13] [cursor=pointer]
+            - text: Home
+        - link "Your Context" [ref=e16] [cursor=pointer]:
+          - /url: /context
+          - button "Your Context" [ref=e17] [cursor=pointer]:
+            - img [ref=e18] [cursor=pointer]
+            - text: Your Context
+        - link "Dashboard" [ref=e21] [cursor=pointer]:
+          - /url: /dashboard
+          - button "Dashboard" [ref=e22] [cursor=pointer]:
+            - img [ref=e23] [cursor=pointer]
+            - text: Dashboard
+        - link "Resources" [ref=e25] [cursor=pointer]:
+          - /url: /resources
+          - button "Resources" [ref=e26] [cursor=pointer]:
+            - img [ref=e27] [cursor=pointer]
+            - text: Resources
+      - link "Sign In" [ref=e31] [cursor=pointer]:
+        - /url: /auth/signin
+        - button "Sign In" [ref=e32] [cursor=pointer]:
+          - img [ref=e33] [cursor=pointer]
+          - text: Sign In
+  - generic [ref=e37]:
+    - generic [ref=e38]:
+      - heading "Syncify" [level=1] [ref=e39]
+      - paragraph [ref=e40]:
+        - strong [ref=e41]: Never repeat yourself to AI again.
+      - paragraph [ref=e42]: Tell ChatGPT, Claude, and Gemini once. They'll remember everywhere.
+    - generic [ref=e43]:
+      - generic [ref=e44]:
+        - img [ref=e45]
+        - heading "Works Everywhere" [level=3] [ref=e48]
+        - paragraph [ref=e49]: ChatGPT, Claude, Gemini - all your AI tools in one place.
+      - generic [ref=e50]:
+        - img [ref=e51]
+        - heading "Auto-Sync" [level=3] [ref=e54]
+        - paragraph [ref=e55]: Chrome extension remembers everything automatically.
+      - generic [ref=e56]:
+        - img [ref=e57]
+        - heading "Your Data, Your Control" [level=3] [ref=e59]
+        - paragraph [ref=e60]: Encrypted and private. You decide what to share.
+    - generic [ref=e61]:
+      - link "Get Started" [ref=e62] [cursor=pointer]:
+        - /url: /context
+        - text: Get Started
+        - img [ref=e63] [cursor=pointer]
+      - paragraph [ref=e65]: Free to use • No credit card required
+    - navigation [ref=e66]:
+      - link "Your Context" [ref=e67] [cursor=pointer]:
+        - /url: /context
+      - link "Dashboard" [ref=e68] [cursor=pointer]:
+        - /url: /dashboard
+      - link "Resources" [ref=e69] [cursor=pointer]:
+        - /url: /resources
+```

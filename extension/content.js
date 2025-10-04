@@ -10,18 +10,29 @@ class UniversalAIContextManager {
     this.originalWebSocket = null
     this.messageQueue = []
     this.observer = null
+    this.debounceTimers = new Map()
+    this.lastCaptureTime = 0
+    
+    // Initialize production systems
+    this.config = new Config()
+    this.logger = new Logger()
+    this.security = new SecurityValidator()
     
     this.init()
   }
 
   async init() {
-    console.log('Syncify content script initializing...')
+    this.logger.info('Syncify content script initializing...')
     
-    // Wait for DOM to be ready
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => this.initialize())
-    } else {
-      this.initialize()
+    try {
+      // Wait for DOM to be ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => this.initialize())
+      } else {
+        this.initialize()
+      }
+    } catch (error) {
+      this.logger.error('Content script initialization failed', error)
     }
   }
 
@@ -38,11 +49,11 @@ class UniversalAIContextManager {
       this.isAISite = this.detectAISite()
       
       if (!this.isAISite) {
-        console.log('Not an AI site, skipping initialization')
+        this.logger.debug('Not an AI site, skipping initialization', { domain: this.currentSite.domain })
         return
       }
 
-      console.log('AI site detected:', this.currentSite.domain)
+      this.logger.info('AI site detected', { domain: this.currentSite.domain })
 
       // Initialize site adapter
       this.siteAdapter = this.createSiteAdapter()
@@ -556,14 +567,30 @@ class UniversalAIContextManager {
 
   async captureContext(messages) {
     try {
-      // Filter out system messages and duplicates
-      const filteredMessages = messages.filter(msg => 
-        msg.role !== 'system' && 
-        msg.content && 
-        msg.content.trim().length > 0
-      )
+      // Validate and filter messages
+      const validatedMessages = messages
+        .map(msg => {
+          try {
+            return this.security.validateMessage(msg)
+          } catch (error) {
+            this.logger.warn('Invalid message filtered out', error, { message: msg })
+            return null
+          }
+        })
+        .filter(msg => msg && msg.role !== 'system' && msg.content.trim().length > 0)
 
-      if (filteredMessages.length === 0) return
+      if (validatedMessages.length === 0) return
+
+      // Debounce rapid captures
+      const now = Date.now()
+      const debounceMs = this.config.get('performance.debounceMs', 500)
+      
+      if (now - this.lastCaptureTime < debounceMs) {
+        this.logger.debug('Capture debounced', { timeSinceLastCapture: now - this.lastCaptureTime })
+        return
+      }
+
+      this.lastCaptureTime = now
 
       // Send to background script
       await this.sendMessage({
@@ -571,15 +598,15 @@ class UniversalAIContextManager {
         data: {
           site: this.currentSite.url,
           provider: this.siteAdapter.getProviderName(),
-          messages: filteredMessages,
-          title: this.generateConversationTitle(filteredMessages)
+          messages: validatedMessages,
+          title: this.generateConversationTitle(validatedMessages)
         }
       })
 
-      console.log('Captured context:', filteredMessages.length, 'messages')
+      this.logger.info('Captured context', { messageCount: validatedMessages.length, provider: this.siteAdapter.getProviderName() })
       
     } catch (error) {
-      console.error('Context capture failed:', error)
+      this.logger.error('Context capture failed', error)
     }
   }
 

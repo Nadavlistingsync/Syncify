@@ -7,7 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:continuous": "node continuous-test.js",
+    "test:report": "playwright show-report",
+    "test:vercel": "node test-vercel.js",
+    "test:vercel:continuous": "node test-vercel.js --continuous"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
@@ -41,6 +47,7 @@
     "zustand": "^4.4.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.1",
     "@types/node": "^20.10.0",
     "@types/react": "^18.2.42",
     "@types/react-dom": "^18.2.17",

@@ -2,32 +2,84 @@
 
 import { createClient } from './lib/supabase.js'
 
-// Initialize Supabase client
-const supabaseUrl = 'https://rxcrqouvjzxwhtvubdso.supabase.co'
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ4Y3Jxb3V2anp4d2h0dnViZHNvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk1ODY3MDcsImV4cCI6MjA3NTE2MjcwN30.AZ-yzDVl3dBWMMQ2RGovLB6Q9tVUsLlWtSBmIzLFm24'
+// Initialize production systems
+const config = new Config()
+const logger = new Logger()
+const security = new SecurityValidator()
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Initialize Supabase client with production config
+const supabaseConfig = config.getSupabaseConfig()
+const supabase = createClient(supabaseConfig.url, supabaseConfig.anonKey)
+
+// Rate limiters
+const apiRateLimiter = security.createRateLimiter(
+  config.get('rateLimiting.maxRequestsPerMinute', 60),
+  60 * 1000 // 1 minute
+)
+
+const injectionRateLimiter = security.createRateLimiter(
+  config.get('rateLimiting.maxInjectionPerMinute', 10),
+  60 * 1000 // 1 minute
+)
 
 // Extension state
 let isAuthenticated = false
 let currentUser = null
 let authToken = null
 
+// Utility function for retryable API calls
+async function fetchWithRetry(url, options = {}, retries = 3) {
+  const maxRetries = config.get('performance.maxRetries', 3)
+  const retryDelay = config.get('performance.retryDelay', 1000)
+  const timeoutMs = config.get('performance.timeoutMs', 30000)
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      })
+
+      clearTimeout(timeoutId)
+      return response
+    } catch (error) {
+      logger.warn(`API call attempt ${attempt} failed`, error, { url, attempt })
+
+      if (attempt === maxRetries) {
+        throw error
+      }
+
+      // Exponential backoff
+      await new Promise(resolve => setTimeout(resolve, retryDelay * attempt))
+    }
+  }
+}
+
 // Initialize extension
 chrome.runtime.onInstalled.addListener(async (details) => {
-  console.log('Syncify extension installed/updated:', details.reason)
+  logger.info('Syncify extension installed/updated', { reason: details.reason })
   
-  // Set default settings
-  await chrome.storage.sync.set({
-    enabled: true,
-    autoCapture: true,
-    autoInject: true,
-    showNotifications: true,
-    activeProfile: null
-  })
-  
-  // Check existing auth
-  await checkAuth()
+  try {
+    // Set default settings
+    await chrome.storage.sync.set({
+      enabled: true,
+      autoCapture: true,
+      autoInject: true,
+      showNotifications: true,
+      activeProfile: null,
+      version: config.get('version', '1.0.0')
+    })
+    
+    // Check existing auth
+    await checkAuth()
+    
+    logger.info('Extension initialization complete')
+  } catch (error) {
+    logger.error('Extension initialization failed', error)
+  }
 })
 
 // Check authentication status
@@ -106,51 +158,51 @@ async function handleContextCapture(data, tab) {
   }
   
   try {
+    // Validate input data
+    const validatedData = security.validateConversation({
+      title: data.title || `Conversation on ${getDomainFromUrl(data.site)}`,
+      provider: data.provider,
+      site: data.site,
+      messages: data.messages || []
+    })
+
+    // Check rate limits
+    apiRateLimiter('capture')
+
     // Log the capture event
     await logEvent({
       kind: 'capture',
       payload: {
-        site: data.site,
-        provider: data.provider,
+        site: validatedData.site,
+        provider: validatedData.provider,
         conversation_id: data.conversationId,
-        message_count: data.messages?.length || 0
+        message_count: validatedData.messages.length
       }
     })
     
     // Store conversation and messages
-    if (data.messages && data.messages.length > 0) {
-      const conversationData = {
-        title: data.title || `Conversation on ${getDomainFromUrl(data.site)}`,
-        provider: data.provider,
-        site: data.site,
-        messages: data.messages
-      }
+    if (validatedData.messages.length > 0) {
+      const response = await fetchWithRetry(`${config.get('apiBaseUrl')}/api/conversations`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(validatedData)
+      })
       
-      // Store the conversation in the database
-      try {
-        const response = await fetch(`http://localhost:3003/api/conversations`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(conversationData)
-        })
-        
-        if (response.ok) {
-          const result = await response.json()
-          console.log('Successfully stored conversation:', result.id)
-        } else {
-          console.error('Failed to store conversation:', response.statusText)
-        }
-      } catch (error) {
-        console.error('Error storing conversation:', error)
+      if (response.ok) {
+        const result = await response.json()
+        logger.info('Successfully stored conversation', { id: result.id, messageCount: validatedData.messages.length })
+        return { success: true, conversationId: result.id }
+      } else {
+        throw new Error(`Failed to store conversation: ${response.statusText}`)
       }
     }
     
     return { success: true }
   } catch (error) {
-    console.error('Context capture failed:', error)
+    logger.error('Context capture failed', error, { site: data.site, provider: data.provider })
     throw error
   }
 }
@@ -174,8 +226,16 @@ async function handleGetContextProfile(data, tab) {
       throw new Error('Site not configured for injection')
     }
     
+    // Validate input
+    if (!security.validateOrigin(data.site)) {
+      throw new Error('Invalid site origin')
+    }
+
+    // Check rate limits
+    injectionRateLimiter('profile')
+
     // Fetch context profile from API
-    const response = await fetch(`http://localhost:3003/api/context/profile?site=${encodeURIComponent(data.site)}&provider=${encodeURIComponent(data.provider)}`, {
+    const response = await fetchWithRetry(`${config.get('apiBaseUrl')}/api/context/profile?site=${encodeURIComponent(data.site)}&provider=${encodeURIComponent(data.provider)}`, {
       headers: {
         'Authorization': `Bearer ${authToken}`,
         'Content-Type': 'application/json'
@@ -186,7 +246,8 @@ async function handleGetContextProfile(data, tab) {
       throw new Error(`Failed to get context profile: ${response.statusText}`)
     }
     
-    const profile = await response.json()
+    const rawProfile = await response.json()
+    const profile = security.validateContextProfile(rawProfile)
     
     // Log the injection attempt
     await logEvent({
@@ -197,6 +258,13 @@ async function handleGetContextProfile(data, tab) {
         profile_used: profile.profile_name,
         estimated_tokens: profile.estimated_tokens
       }
+    })
+    
+    logger.info('Context profile retrieved successfully', { 
+      site: data.site, 
+      provider: data.provider,
+      profileName: profile.profile_name,
+      estimatedTokens: profile.estimated_tokens
     })
     
     return profile
@@ -255,26 +323,38 @@ async function handleLogEvent(data) {
 
 // Log event to API
 async function logEvent(eventData) {
-    const response = await fetch(`http://localhost:3003/api/events`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${authToken}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(eventData)
-  })
-  
-  if (!response.ok) {
-    throw new Error(`Failed to log event: ${response.statusText}`)
+  try {
+    // Validate event data
+    const validatedData = {
+      kind: eventData.kind || 'unknown',
+      payload: security.sanitizeContent(JSON.stringify(eventData.payload || {}))
+    }
+
+    const response = await fetchWithRetry(`${config.get('apiBaseUrl')}/api/events`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(validatedData)
+    })
+    
+    if (!response.ok) {
+      throw new Error(`Failed to log event: ${response.statusText}`)
+    }
+    
+    return await response.json()
+  } catch (error) {
+    logger.warn('Failed to log event to server', error, { eventKind: eventData.kind })
+    // Don't throw - logging failures shouldn't break the extension
+    return { success: false, error: error.message }
   }
-  
-  return await response.json()
 }
 
 // Get site policy
 async function getSitePolicy(site) {
   try {
-    const response = await fetch(`http://localhost:3003/api/site-policies?origin=${encodeURIComponent(site)}`, {
+    const response = await fetchWithRetry(`${config.get('apiBaseUrl')}/api/site-policies?origin=${encodeURIComponent(site)}`, {
       headers: {
         'Authorization': `Bearer ${authToken}`,
         'Content-Type': 'application/json'
@@ -297,7 +377,7 @@ async function getSitePolicy(site) {
 async function handleAuthLogin() {
   try {
     // Open auth page
-    const authUrl = `http://localhost:3003/auth/login?extension=true`
+    const authUrl = `${config.get('appUrl')}/auth/login?extension=true`
     const tab = await chrome.tabs.create({ url: authUrl })
     
     // Listen for auth completion

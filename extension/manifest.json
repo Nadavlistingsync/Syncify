@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Syncify - AI Context Sync",
   "version": "1.0.0",
-  "description": "Sync your AI context across all LLMs and websites",
+  "description": "Sync your AI context across all LLMs and websites. Production-ready extension for seamless AI conversations.",
   "permissions": [
     "activeTab",
     "storage",
@@ -43,7 +43,12 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["lib/supabase.js"],
+      "resources": [
+        "lib/supabase.js",
+        "lib/logger.js",
+        "lib/security.js",
+        "config.js"
+      ],
       "matches": ["<all_urls>"]
     }
   ],
