@@ -1,23 +1,19 @@
-import { createClient } from '@supabase/supabase-js'
-import { createClientComponentClient, createServerComponentClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder_key'
 
 // Client-side Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createSupabaseClient(supabaseUrl, supabaseAnonKey)
 
 // Client component client
 export const createClient = () => createClientComponentClient()
 
-// Server component client
-export const createServerClient = () => createServerComponentClient({ cookies })
-
 // Service role client for server-side operations
 export const createServiceClient = () => {
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-  return createClient(supabaseUrl, serviceKey, {
+  return createSupabaseClient(supabaseUrl, serviceKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false
@@ -209,12 +205,60 @@ export interface Database {
           ts?: string
         }
       }
+      user_context: {
+        Row: {
+          id: string
+          user_id: string
+          conversation_id: string | null
+          site: string
+          provider: string
+          context_type: 'conversation' | 'preference' | 'fact' | 'skill' | 'note'
+          title: string
+          content: string
+          importance: number
+          pii: boolean
+          metadata: any
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          conversation_id?: string | null
+          site: string
+          provider: string
+          context_type?: 'conversation' | 'preference' | 'fact' | 'skill' | 'note'
+          title: string
+          content: string
+          importance?: number
+          pii?: boolean
+          metadata?: any
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          conversation_id?: string | null
+          site?: string
+          provider?: string
+          context_type?: 'conversation' | 'preference' | 'fact' | 'skill' | 'note'
+          title?: string
+          content?: string
+          importance?: number
+          pii?: boolean
+          metadata?: any
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
   }
 }
 
 export type Profile = Database['public']['Tables']['profiles']['Row']
 export type Memory = Database['public']['Tables']['memories']['Row']
+export type UserContext = Database['public']['Tables']['user_context']['Row']
 export type Conversation = Database['public']['Tables']['conversations']['Row']
 export type Message = Database['public']['Tables']['messages']['Row']
 export type SitePolicy = Database['public']['Tables']['site_policies']['Row']

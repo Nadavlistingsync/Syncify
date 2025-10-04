@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,8 +10,9 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { MemoryCard } from '@/components/memory-card'
 import { AddMemoryDialog } from '@/components/add-memory-dialog'
+import { UserContextCard } from '@/components/user-context-card'
 import { AuthGuard } from '@/components/auth-guard'
-import { Brain, Filter, Search, Info, Plus, Settings, User } from 'lucide-react'
+import { Brain, Filter, Search, Info, Plus, Settings, User, MessageSquare } from 'lucide-react'
 import { Memory, Profile } from '@/lib/supabase'
 import { createClient } from '@/lib/supabase'
 import { useAuth } from '@/app/providers'
@@ -18,7 +21,7 @@ import Link from 'next/link'
 export default function ContextPage() {
   const [filterType, setFilterType] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [activeTab, setActiveTab] = useState<'memories' | 'profiles'>('memories')
+  const [activeTab, setActiveTab] = useState<'memories' | 'profiles' | 'context'>('memories')
   const supabase = createClient()
   const queryClient = useQueryClient()
   const { user } = useAuth()
@@ -54,6 +57,32 @@ export default function ContextPage() {
       
       if (error) throw error
       return data as Profile[]
+    },
+    enabled: !!user
+  })
+
+  // Fetch user context
+  const { data: userContext = [], isLoading: contextLoading } = useQuery({
+    queryKey: ['user-context'],
+    queryFn: async () => {
+      if (!user) return []
+      const { data, error } = await supabase
+        .from('user_context')
+        .select(`
+          *,
+          conversations (
+            id,
+            title,
+            provider,
+            site
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('importance', { ascending: false })
+        .order('created_at', { ascending: false })
+      
+      if (error) throw error
+      return data
     },
     enabled: !!user
   })
@@ -144,6 +173,44 @@ export default function ContextPage() {
     }
   })
 
+  // Update user context mutation
+  const updateUserContextMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
+      const { data, error } = await supabase
+        .from('user_context')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single()
+      
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-context'] })
+    }
+  })
+
+  // Helper function for updating user context
+  const handleUpdateUserContext = async (id: string, updates: any) => {
+    await updateUserContextMutation.mutateAsync({ id, updates })
+  }
+
+  // Delete user context mutation
+  const deleteUserContextMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('user_context')
+        .delete()
+        .eq('id', id)
+      
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-context'] })
+    }
+  })
+
   // Filter and search memories
   const filteredMemories = memories.filter(memory => {
     const matchesType = filterType === 'all' || memory.type === filterType
@@ -159,6 +226,8 @@ export default function ContextPage() {
 
   const totalMemories = memories.length
   const privateMemories = memories.filter(m => m.pii).length
+  const totalContext = userContext.length
+  const conversationContext = userContext.filter(c => c.context_type === 'conversation').length
 
   return (
     <AuthGuard>
@@ -189,6 +258,17 @@ export default function ContextPage() {
             Memories
           </button>
           <button
+            onClick={() => setActiveTab('context')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+              activeTab === 'context'
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <MessageSquare className="h-4 w-4 mr-2 inline" />
+            Context
+          </button>
+          <button
             onClick={() => setActiveTab('profiles')}
             className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
               activeTab === 'profiles'
@@ -204,7 +284,7 @@ export default function ContextPage() {
         {/* Content based on active tab */}
         {activeTab === 'memories' ? (
           <>
-            {/* Stats */}
+            {/* Memory Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card>
                 <CardContent className="p-4">
@@ -232,6 +312,40 @@ export default function ContextPage() {
                     {Math.round(memories.reduce((acc, m) => acc + m.importance, 0) / totalMemories) || 0}
                   </div>
                   <div className="text-sm text-muted-foreground">Avg Importance</div>
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        ) : activeTab === 'context' ? (
+          <>
+            {/* Context Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold">{totalContext}</div>
+                  <div className="text-sm text-muted-foreground">Total Context</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold">{conversationContext}</div>
+                  <div className="text-sm text-muted-foreground">Conversations</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold">
+                    {userContext.filter(c => c.importance >= 8).length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">High Importance</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold">
+                    {userContext.filter(c => c.pii).length}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Private</div>
                 </CardContent>
               </Card>
             </div>
@@ -300,6 +414,15 @@ export default function ContextPage() {
             </div>
             
             <AddMemoryDialog onAdd={addMemoryMutation.mutateAsync} />
+          </div>
+        ) : activeTab === 'context' ? (
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-muted-foreground">
+              View and manage captured conversation context from AI interactions
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Context is automatically captured by the browser extension
+            </div>
           </div>
         ) : (
           <div className="flex items-center justify-between">
@@ -379,8 +502,59 @@ export default function ContextPage() {
                   <MemoryCard
                     key={memory.id}
                     memory={memory}
-                    onUpdate={updateMemoryMutation.mutateAsync}
+                    onUpdate={(id, updates) => updateMemoryMutation.mutateAsync({ id, updates })}
                     onDelete={deleteMemoryMutation.mutateAsync}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        ) : activeTab === 'context' ? (
+          <>
+            {/* User Context Grid */}
+            {contextLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <Card key={i} className="animate-pulse">
+                    <CardHeader>
+                      <div className="h-4 bg-muted rounded w-1/3"></div>
+                      <div className="h-3 bg-muted rounded w-1/4"></div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        <div className="h-3 bg-muted rounded"></div>
+                        <div className="h-3 bg-muted rounded w-3/4"></div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : userContext.length === 0 ? (
+              <Card className="text-center py-12">
+                <CardContent>
+                  <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No context captured yet</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Start using AI assistants with the Syncify extension to automatically capture conversation context
+                  </p>
+                  <div className="text-sm text-muted-foreground">
+                    <p>Install the Chrome extension and visit AI sites like:</p>
+                    <ul className="mt-2 space-y-1">
+                      <li>• chat.openai.com</li>
+                      <li>• claude.ai</li>
+                      <li>• gemini.google.com</li>
+                    </ul>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {userContext.map((context) => (
+                  <UserContextCard
+                    key={context.id}
+                    context={context}
+                    onUpdate={handleUpdateUserContext}
+                    onDelete={deleteUserContextMutation.mutateAsync}
                   />
                 ))}
               </div>
@@ -468,9 +642,9 @@ export default function ContextPage() {
               <div className="text-sm text-blue-800">
                 <p className="font-medium mb-1">How this works:</p>
                 <ul className="space-y-1 text-blue-700">
-                  <li>• {activeTab === 'memories' ? 'Memories' : 'Profiles'} are automatically shared with AI assistants you use</li>
-                  <li>• Private {activeTab === 'memories' ? 'memories' : 'data'} (marked with 🔒) are not shared with third-party sites</li>
-                  <li>• {activeTab === 'memories' ? 'Higher importance memories are prioritized in context' : 'Different profiles can be used for different contexts'}</li>
+                  <li>• {activeTab === 'memories' ? 'Memories' : activeTab === 'context' ? 'Context' : 'Profiles'} are automatically shared with AI assistants you use</li>
+                  <li>• Private {activeTab === 'memories' ? 'memories' : activeTab === 'context' ? 'context' : 'data'} (marked with 🔒) are not shared with third-party sites</li>
+                  <li>• {activeTab === 'memories' ? 'Higher importance memories are prioritized in context' : activeTab === 'context' ? 'Conversation context is automatically captured and organized' : 'Different profiles can be used for different contexts'}</li>
                   <li>• The Chrome extension handles automatic synchronization</li>
                 </ul>
               </div>

@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { ArrowRight, Brain, Globe, Shield } from 'lucide-react'
 
+export const dynamic = 'force-dynamic'
+
 export default function HomePage() {
   return (
     <div className="max-w-4xl mx-auto text-center">

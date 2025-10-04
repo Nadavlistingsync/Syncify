@@ -20,8 +20,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Site parameter required' }, { status: 400 })
     }
 
-    // Get context profile using the database function
-    const { data, error } = await supabase.rpc('get_context_profile', {
+    // Get context profile using the enhanced database function
+    const { data, error } = await supabase.rpc('get_enhanced_context_profile', {
       p_user_id: user.id,
       p_site: site,
       p_provider: provider

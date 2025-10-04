@@ -126,8 +126,26 @@ async function handleContextCapture(data, tab) {
         messages: data.messages
       }
       
-      // This would typically call your API to store the conversation
-      console.log('Captured conversation:', conversationData)
+      // Store the conversation in the database
+      try {
+        const response = await fetch(`${process.env.API_BASE_URL || 'http://localhost:3000'}/api/conversations`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(conversationData)
+        })
+        
+        if (response.ok) {
+          const result = await response.json()
+          console.log('Successfully stored conversation:', result.id)
+        } else {
+          console.error('Failed to store conversation:', response.statusText)
+        }
+      } catch (error) {
+        console.error('Error storing conversation:', error)
+      }
     }
     
     return { success: true }

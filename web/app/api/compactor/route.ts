@@ -31,7 +31,7 @@ async function runCompactorJob(supabase: any, userId: string, force: boolean = f
     created_summaries: 0,
     updated_memories: 0,
     decayed_memories: 0,
-    errors: []
+    errors: [] as Array<{ conversation_id?: string; general?: string; error?: string }>
   }
 
   try {
@@ -105,7 +105,7 @@ async function runCompactorJob(supabase: any, userId: string, force: boolean = f
         console.error('Error processing conversation:', error)
         results.errors.push({
           conversation_id: conversation.id,
-          error: error.message
+          error: error instanceof Error ? error.message : 'Unknown error'
         })
       }
     }
@@ -122,7 +122,7 @@ async function runCompactorJob(supabase: any, userId: string, force: boolean = f
   } catch (error) {
     console.error('Compactor job failed:', error)
     results.errors.push({
-      general: error.message
+      general: error instanceof Error ? error.message : 'Unknown error'
     })
     return results
   }
@@ -164,7 +164,7 @@ async function createConversationSummary(conversation: any): Promise<string | nu
 }
 
 async function extractConversationInsights(conversation: any): Promise<any[]> {
-  const insights = []
+  const insights: any[] = []
   const messages = conversation.messages || []
   
   try {
@@ -234,7 +234,7 @@ function extractTopics(messages: string[]): string[] {
 }
 
 function extractOutcomes(messages: string[]): string[] {
-  const outcomes = []
+  const outcomes: any[] = []
   
   // Look for solutions, answers, or conclusions
   const outcomeIndicators = [
@@ -262,7 +262,7 @@ function extractOutcomes(messages: string[]): string[] {
 }
 
 function extractPreferences(messages: any[]): string[] {
-  const preferences = []
+  const preferences: any[] = []
   
   // Look for preference indicators
   const preferenceIndicators = [
@@ -283,7 +283,7 @@ function extractPreferences(messages: any[]): string[] {
 }
 
 function extractFacts(messages: any[]): string[] {
-  const facts = []
+  const facts: any[] = []
   
   // Look for factual statements
   const factIndicators = [
@@ -297,7 +297,7 @@ function extractFacts(messages: any[]): string[] {
       if (content.toLowerCase().includes(indicator)) {
         // Extract sentences that look like facts
         const sentences = content.split(/[.!?]+/)
-        sentences.forEach(sentence => {
+        sentences.forEach((sentence: string) => {
           if (sentence.length > 20 && sentence.length < 200) {
             facts.push(sentence.trim())
           }
@@ -310,7 +310,7 @@ function extractFacts(messages: any[]): string[] {
 }
 
 function extractSkills(messages: any[]): string[] {
-  const skills = []
+  const skills: any[] = []
   
   // Look for skill mentions
   const skillIndicators = [

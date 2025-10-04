@@ -67,14 +67,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { title, provider, site } = body
+    const { title, provider, site, messages } = body
 
     if (!title || !provider || !site) {
       return NextResponse.json({ error: 'Title, provider, and site required' }, { status: 400 })
     }
 
     // Insert conversation
-    const { data, error } = await supabase
+    const { data: conversation, error: conversationError } = await supabase
       .from('conversations')
       .insert({
         user_id: user.id,
@@ -85,12 +85,45 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
 
-    if (error) {
-      console.error('Error creating conversation:', error)
+    if (conversationError) {
+      console.error('Error creating conversation:', conversationError)
       return NextResponse.json({ error: 'Failed to create conversation' }, { status: 500 })
     }
 
-    return NextResponse.json(data)
+    // Insert messages if provided
+    if (messages && messages.length > 0) {
+      const messagesData = messages.map((msg: any) => ({
+        conversation_id: conversation.id,
+        role: msg.role,
+        content: msg.content,
+        provider: provider,
+        ts: msg.timestamp || new Date().toISOString()
+      }))
+
+      const { error: messagesError } = await supabase
+        .from('messages')
+        .insert(messagesData)
+
+      if (messagesError) {
+        console.error('Error inserting messages:', messagesError)
+        // Don't fail the request, just log the error
+      } else {
+        // Extract and store context from the conversation
+        try {
+          await supabase.rpc('extract_context_from_conversation', {
+            p_conversation_id: conversation.id,
+            p_user_id: user.id,
+            p_site: site,
+            p_provider: provider
+          })
+        } catch (contextError) {
+          console.error('Error extracting context:', contextError)
+          // Don't fail the request, just log the error
+        }
+      }
+    }
+
+    return NextResponse.json(conversation)
   } catch (error) {
     console.error('Conversations API error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

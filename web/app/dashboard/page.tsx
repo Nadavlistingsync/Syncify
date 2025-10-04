@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -116,7 +118,7 @@ export default function DashboardPage() {
   }, {} as Record<string, number>)
 
   const topSites = Object.entries(siteStats)
-    .sort(([,a], [,b]) => b - a)
+    .sort(([,a], [,b]) => (b as number) - (a as number))
     .slice(0, 5)
 
   // Get top providers
@@ -126,7 +128,7 @@ export default function DashboardPage() {
   }, {} as Record<string, number>)
 
   const topProviders = Object.entries(providerStats)
-    .sort(([,a], [,b]) => b - a)
+    .sort(([,a], [,b]) => (b as number) - (a as number))
     .slice(0, 5)
 
   // Recent activity
@@ -240,7 +242,7 @@ export default function DashboardPage() {
                       <div className="w-2 h-2 bg-primary rounded-full"></div>
                       <span className="text-sm font-medium">{site}</span>
                     </div>
-                    <Badge variant="outline">{count} conversations</Badge>
+                    <Badge variant="outline">{count as number} conversations</Badge>
                   </div>
                 ))}
               </div>
@@ -269,7 +271,7 @@ export default function DashboardPage() {
                       <div className="w-2 h-2 bg-primary rounded-full"></div>
                       <span className="text-sm font-medium capitalize">{provider}</span>
                     </div>
-                    <Badge variant="outline">{count} conversations</Badge>
+                    <Badge variant="outline">{count as number} conversations</Badge>
                   </div>
                 ))}
               </div>

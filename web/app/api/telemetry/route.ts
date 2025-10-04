@@ -47,12 +47,12 @@ export async function GET(request: NextRequest) {
 function processTelemetryData(events: any[], groupBy: string) {
   const stats = {
     total_events: events.length,
-    by_kind: {},
-    by_site: {},
-    by_provider: {},
+    by_kind: {} as Record<string, number>,
+    by_site: {} as Record<string, number>,
+    by_provider: {} as Record<string, number>,
     success_rate: 0,
     error_rate: 0,
-    top_errors: [],
+    top_errors: [] as Array<{ error: string; count: number }>,
     performance: {
       avg_response_time: 0,
       total_injections: 0,
@@ -107,7 +107,7 @@ function processTelemetryData(events: any[], groupBy: string) {
   // Calculate rates
   const totalInjectionEvents = totalInjections
   stats.success_rate = totalInjectionEvents > 0 ? (successfulInjections / totalInjectionEvents) * 100 : 0
-  stats.error_rate = events.length > 0 ? (stats.by_kind.error || 0) / events.length * 100 : 0
+  stats.error_rate = events.length > 0 ? (stats.by_kind['error'] || 0) / events.length * 100 : 0
 
   // Performance metrics
   stats.performance.total_injections = totalInjections
@@ -117,9 +117,9 @@ function processTelemetryData(events: any[], groupBy: string) {
 
   // Top errors
   stats.top_errors = Object.entries(errorCounts)
-    .sort(([,a], [,b]) => b - a)
+    .sort(([,a], [,b]) => (b as number) - (a as number))
     .slice(0, 10)
-    .map(([error, count]) => ({ error, count }))
+    .map(([error, count]) => ({ error, count: count as number }))
 
   return stats
 }
