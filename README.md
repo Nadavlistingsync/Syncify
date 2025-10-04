@@ -17,6 +17,7 @@ Syncify is a comprehensive platform that synchronizes your AI context across all
 - **Conflict Resolution**: Smart handling of concurrent updates
 - **Custom Memory Types**: Code snippets, preferences, knowledge bases
 - **Context Versioning**: Track changes over time
+- **Chunked Data Export**: Download large datasets in small, manageable chunks with progress tracking
 - **Team Collaboration**: Shared contexts and permissions (coming soon)
 
 ## 🏗️ Architecture
@@ -166,6 +167,59 @@ POST /api/events
 # Get user memories
 GET /api/memories?type=fact&limit=10
 ```
+
+## 📤 Data Export & Privacy
+
+### Chunked Export System
+
+Syncify includes a sophisticated chunked export system that allows you to download large datasets without timeouts or memory issues:
+
+#### Features
+- **Progressive Download**: Data is downloaded in small chunks (50 records per chunk)
+- **Progress Tracking**: Real-time progress updates with detailed status
+- **Multiple Formats**: Export as JSON (complete) or CSV (summary)
+- **Privacy Controls**: Choose between safe (redacted) or full exports
+- **Cancellation**: Stop long-running exports at any time
+
+#### How It Works
+
+1. **Export Manifest**: The system first creates a manifest showing total chunks needed
+2. **Chunked Download**: Data is downloaded in small batches to prevent timeouts
+3. **Progress Updates**: Real-time progress is shown to the user
+4. **Data Assembly**: All chunks are combined into a single export file
+5. **Download**: The complete export file is downloaded to your device
+
+#### API Endpoints
+
+```bash
+# Get export manifest (shows total chunks needed)
+POST /api/export/chunked
+{
+  "format": "json",
+  "includeRedacted": false,
+  "chunkSize": 50
+}
+
+# Download individual chunk
+GET /api/export/chunked?dataType=memories&chunk=0&chunkSize=50
+
+# Legacy single-file export (for small datasets)
+GET /api/export?format=json&includeRedacted=false
+```
+
+#### Privacy Levels
+
+- **Safe Export**: Automatically redacts sensitive information (emails, phone numbers, API keys)
+- **Full Export**: Includes all data (use only if you understand the privacy implications)
+
+#### Usage in Web App
+
+1. Go to "Resources" → "Data Management"
+2. Choose export format (JSON or CSV)
+3. Select privacy level (Safe or Full)
+4. Click "Export Safe JSON" or "Export CSV"
+5. Watch the progress dialog as data downloads in chunks
+6. Cancel anytime if needed
 
 ## 🔧 Configuration
 
