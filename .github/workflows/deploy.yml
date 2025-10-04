@@ -19,14 +19,12 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: |
-          cd web
-          npm install
+        working-directory: ./web
+        run: npm install
 
       - name: Build application
-        run: |
-          cd web
-          npm run build
+        working-directory: ./web
+        run: npm run build
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
